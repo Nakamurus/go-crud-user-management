@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  db:
+    env_file: .env
+    image: postgres:14.0-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PORT: ${DB_PORT}
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+
+  api:
+    env_file: .env
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    tty: true
+    volumes:
+      - ./api:/app
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
