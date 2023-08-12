@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/nakamurus/go-user-management/util"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +21,17 @@ type DBConfig struct {
 	USER     string
 	DBNAME   string
 	PASSWORD string
+}
+
+func (u *User) BeforeSave(tx *gorm.DB) (err error) {
+	if u.Password != "" {
+		hashedPassword, err := util.HashPassword(u.Password)
+		if err != nil {
+			return err
+		}
+		u.Password = hashedPassword
+	}
+	return nil
 }
 
 func CreateUser(db *gorm.DB, user User) (*User, error) {

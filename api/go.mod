@@ -8,6 +8,8 @@ require (
 	gorm.io/gorm v1.25.3
 )
 
+require github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/bytedance/sonic v1.10.0 // indirect

@@ -56,6 +56,8 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World!")
 	})
+	r.POST("`/login", handlers.LoginHandler(DB))
+	r.GET("/protected", handlers.AuthenticateMiddleware(), handlers.GetUserHandler(DB))
 	r.GET("/users", handlers.ListUsersHandler(DB))
 	r.GET("/user/:id", handlers.GetUserHandler(DB))
 	r.POST("/user", handlers.CreateUserHandler(DB))
