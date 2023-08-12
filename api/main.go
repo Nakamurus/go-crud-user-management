@@ -10,32 +10,38 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/nakamurus/go-user-management/handlers"
+	"github.com/nakamurus/go-user-management/middleware"
 	"github.com/nakamurus/go-user-management/models"
 )
 
-var DB *gorm.DB
+type App struct {
+	DB     *gorm.DB
+	JWTKey []byte
+}
 
-func init() {
-	var err error
-	config := models.DBConfig{
-		HOST:     os.Getenv("DB_HOST"),
-		PORT:     os.Getenv("DB_PORT"),
-		USER:     os.Getenv("DB_USER"),
-		DBNAME:   os.Getenv("DB_NAME"),
-		PASSWORD: os.Getenv("DB_PASSWORD"),
-	}
-	connStr := "postgres://" + config.USER + ":" + config.PASSWORD + "@" +
-		config.HOST + ":" + config.PORT + "/" + config.DBNAME + "?sslmode=disable"
-	DB, err = gorm.Open(postgres.Open(connStr), &gorm.Config{
+func main() {
+	var app App
+
+	app.JWTKey = []byte(os.Getenv("JWT_KEY"))
+
+	connStr := "postgres://" + os.Getenv("DB_USER") + ":" + os.Getenv("DB_PASSWORD") + "@" +
+		os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT") + "/" + os.Getenv("DB_NAME") + "?sslmode=disable"
+	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
+
 	if err != nil {
 		panic("Failed to connect to database")
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic("Failed to retrieve the database connection")
+	}
+	defer sqlDB.Close()
 
-	DB.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.User{})
 	// create user table if not exists
-	DB.Exec(`
+	db.Exec(`
 	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 	DROP TABLE IF EXISTS users;
@@ -48,21 +54,24 @@ func init() {
 		PRIMARY KEY (id)
 	);
 	`)
-}
 
-func main() {
+	app.DB = db
+
 	r := gin.Default()
+	uh := handlers.UserHandler(app.DB, app.JWTKey)
+	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey)
+	m := middleware.NewMiddleware(app.JWTKey)
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World!")
 	})
-	r.POST("`/login", handlers.LoginHandler(DB))
-	r.GET("/protected", handlers.AuthenticateMiddleware(), handlers.GetUserHandler(DB))
-	r.GET("/users", handlers.ListUsersHandler(DB))
-	r.GET("/user/:id", handlers.GetUserHandler(DB))
-	r.POST("/user", handlers.CreateUserHandler(DB))
-	r.PUT("/user/:id", handlers.UpdateUserHandler(DB))
-	r.DELETE("/user/:id", handlers.DeleteUserHandler(DB))
+	r.POST("`/login", ah.LoginHandler())
+	r.GET("/protected", m.AuthenticateMiddleware(), uh.GetUserHandler())
+	r.GET("/users", uh.ListUsersHandler())
+	r.GET("/user/:id", uh.GetUserHandler())
+	r.POST("/user", uh.CreateUserHandler())
+	r.PUT("/user/:id", uh.UpdateUserHandler())
+	r.DELETE("/user/:id", uh.DeleteUserHandler())
 
 	r.Run(":8080")
 }

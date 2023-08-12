@@ -1,12 +1,8 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nakamurus/go-user-management/models"
@@ -14,27 +10,19 @@ import (
 	"gorm.io/gorm"
 )
 
-var jwtkey = []byte(os.Getenv("JWT_SECRET"))
-
-func generateToken(user models.User) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &jwt.StandardClaims{
-		Subject:   user.Email,
-		ExpiresAt: expirationTime.Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtkey)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
+type AuthHandler struct {
+	db     *gorm.DB
+	JWTKey []byte
 }
 
-func refreshJWTToken(c *gin.Context, user models.User) {
+func AuthHandlerInit(db *gorm.DB, jwtkey []byte) AuthHandler {
+	return AuthHandler{
+		db:     db,
+		JWTKey: jwtkey,
+	}
 }
 
-func LoginHandler(db *gorm.DB) gin.HandlerFunc {
+func (h *AuthHandler) LoginHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var user models.User
 		if err := c.ShouldBindJSON(&user); err != nil {
@@ -43,7 +31,7 @@ func LoginHandler(db *gorm.DB) gin.HandlerFunc {
 		}
 		var foundUser models.User
 
-		if err := db.Where("email = ?", user.Email).First(&foundUser).Error; err != nil {
+		if err := h.db.Where("email = ?", user.Email).First(&foundUser).Error; err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 			return
 		}
@@ -54,7 +42,7 @@ func LoginHandler(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		tokenString, err := generateToken(foundUser)
+		tokenString, err := util.GenerateToken(h.JWTKey, foundUser.Email)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating token"})
 			return
@@ -63,47 +51,44 @@ func LoginHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func ChangePassword(db *gorm.DB, userID uuid.UUID, oldPassword, newPassword string) error {
-	user, err := models.GetUserById(db, userID)
-
-	if err != nil {
-		return err
-	}
-
-	if !util.CheckPasswordHash(oldPassword, user.Password) {
-		return errors.New("current password is wrong")
-	}
-
-	user.Password = newPassword
-	return db.Save(&user).Error
-
-}
-
-func AuthenticateMiddleware() gin.HandlerFunc {
+func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
+		var changePasswordRequest struct {
+			OldPassword string `json:"old_password"`
+			NewPassword string `json:"new_password"`
+		}
+
+		if err := c.ShouldBindJSON(&changePasswordRequest); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(tokenString, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return jwtkey, nil
-		})
-
+		userID, err := util.GetUserIDFromJWT(c, h.JWTKey)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Error parsing token"})
-			c.Abort()
-			return
-		}
-
-		if !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
+			return
+		}
+		uuid, err := uuid.Parse(userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error parsing user id"})
+			return
+		}
+		user, err := models.GetUserById(h.db, uuid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user"})
 			return
 		}
 
-		c.Next()
+		if !util.CheckPasswordHash(changePasswordRequest.OldPassword, user.Password) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
+			return
+		}
+		user.Password = changePasswordRequest.NewPassword
+
+		if err := h.db.Save(user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating password"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 	}
 }

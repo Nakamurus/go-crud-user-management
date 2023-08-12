@@ -10,6 +10,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type Handler struct {
+	db     *gorm.DB
+	JWTKey []byte
+}
+
+func UserHandler(db *gorm.DB, jwtKey []byte) *Handler {
+	return &Handler{
+		db:     db,
+		JWTKey: jwtKey,
+	}
+}
+
 func getUUIDFromRequest(c *gin.Context) uuid.UUID {
 	id := c.Param("id")
 	uid, err := uuid.Parse(id)
@@ -19,9 +31,9 @@ func getUUIDFromRequest(c *gin.Context) uuid.UUID {
 	return uid
 }
 
-func ListUsersHandler(db *gorm.DB) gin.HandlerFunc {
+func (h *Handler) ListUsersHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		users, err := models.GetAllUsers(db)
+		users, err := models.GetAllUsers(h.db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -30,10 +42,10 @@ func ListUsersHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func GetUserHandler(db *gorm.DB) gin.HandlerFunc {
+func (h *Handler) GetUserHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := getUUIDFromRequest(c)
-		user, err := models.GetUserById(db, id)
+		user, err := models.GetUserById(h.db, id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -42,7 +54,7 @@ func GetUserHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func CreateUserHandler(db *gorm.DB) gin.HandlerFunc {
+func (h *Handler) CreateUserHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		var user models.User
@@ -52,7 +64,7 @@ func CreateUserHandler(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		newUser, err := models.CreateUser(db, user)
+		newUser, err := models.CreateUser(h.db, user)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -62,7 +74,7 @@ func CreateUserHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func UpdateUserHandler(db *gorm.DB) gin.HandlerFunc {
+func (h *Handler) UpdateUserHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := getUUIDFromRequest(c)
 		var user models.User
@@ -71,7 +83,7 @@ func UpdateUserHandler(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		user.ID = id
-		updatedUser, err := models.UpdateUser(db, &user)
+		updatedUser, err := models.UpdateUser(h.db, &user)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -81,16 +93,16 @@ func UpdateUserHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func DeleteUserHandler(db *gorm.DB) gin.HandlerFunc {
+func (h *Handler) DeleteUserHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := getUUIDFromRequest(c)
 
-		user, err := models.GetUserById(db, id)
+		user, err := models.GetUserById(h.db, id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		if err := models.DeleteUser(db, user); err != nil {
+		if err := models.DeleteUser(h.db, user); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
