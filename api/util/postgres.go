@@ -18,11 +18,6 @@ func DBConnect() *gorm.DB {
 	if err != nil {
 		panic("Failed to connect to database")
 	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		panic("Failed to retrieve the database connection")
-	}
-	defer sqlDB.Close()
 
 	// create user table if not exists
 	db.Exec(`

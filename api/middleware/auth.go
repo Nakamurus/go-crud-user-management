@@ -5,6 +5,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/nakamurus/go-user-management/util"
 )
 
 type MiddleWare struct {
@@ -17,9 +18,9 @@ func NewMiddleware(jwtkey []byte) *MiddleWare {
 
 func (m *MiddleWare) AuthenticateMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		tokenString, err := util.ExtractBearerToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return
 		}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/nakamurus/go-user-management/models"
 	"github.com/nakamurus/go-user-management/util"
 	"gorm.io/gorm"
@@ -73,17 +72,13 @@ func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 			return
 		}
 
-		userID, err := util.GetUserIDFromJWT(c, h.JWTKey)
+		email, err := util.GetSubjectFromJWT(c, h.JWTKey)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
-		uuid, err := uuid.Parse(userID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error parsing user id"})
-			return
-		}
-		user, err := models.GetUserById(h.db, uuid)
+
+		user, err := models.GetUserByEmail(h.db, email)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user"})
 			return
@@ -93,7 +88,12 @@ func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
 			return
 		}
-		user.Password = changePasswordRequest.NewPassword
+		hashedPassword, err := util.HashPassword(changePasswordRequest.NewPassword)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
+			return
+		}
+		user.Password = hashedPassword
 
 		if err := h.db.Save(user).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating password"})
@@ -111,15 +111,15 @@ func (h *AuthHandler) RefreshTokenHandler() gin.HandlerFunc {
 			return
 		}
 
-		oldToken := c.Request.Header.Get("Authorization")
-		if oldToken == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "No token found in request headers"})
+		oldToken, err := util.ExtractBearerToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
 		newToken, err := util.RefreshJWTToken(h.JWTKey, oldToken)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error refreshing token"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"token": newToken})
@@ -138,12 +138,14 @@ func (h *AuthHandler) LogOutHandler() gin.HandlerFunc {
 }
 
 func (h *AuthHandler) processAndBlacklistToken(c *gin.Context) error {
-	token := c.Request.Header.Get("Authorization")
-	if token == "" {
-		return errors.New("No token found in request headers")
+	tokenString, err := util.ExtractBearerToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.Abort()
+		return err
 	}
 
-	isBlacklisted, err := util.IsTokenBlocklisted(token, h.rdb)
+	isBlacklisted, err := util.IsTokenBlocklisted(tokenString, h.rdb)
 	if err != nil {
 		return err
 	}
@@ -152,7 +154,7 @@ func (h *AuthHandler) processAndBlacklistToken(c *gin.Context) error {
 		return errors.New("Token is blacklisted")
 	}
 
-	claims, err := util.ParseToken(h.JWTKey, token)
+	claims, err := util.ParseToken(h.JWTKey, tokenString)
 	if err != nil {
 		return err
 	}
@@ -160,5 +162,5 @@ func (h *AuthHandler) processAndBlacklistToken(c *gin.Context) error {
 	expireTime := time.Unix(claims.ExpiresAt, 0)
 	expiration := expireTime.Sub(time.Now())
 
-	return util.AddTokenToBlacklist(token, h.rdb, expiration)
+	return util.AddTokenToBlacklist(tokenString, h.rdb, expiration)
 }

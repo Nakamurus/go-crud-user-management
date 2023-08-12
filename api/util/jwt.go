@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -61,18 +62,19 @@ func RefreshJWTToken(jwtKey []byte, oldTokenString string) (string, error) {
 	return newTokenString, nil
 }
 
-func GetUserIDFromJWT(c *gin.Context, jwtkey []byte) (string, error) {
-	tokenString := c.Request.Header.Get("Authorization")
-
-	if tokenString == "" {
-		return "", errors.New("Authorization header is empty")
+func GetSubjectFromJWT(c *gin.Context, jwtkey []byte) (string, error) {
+	tokenString, err := ExtractBearerToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.Abort()
+		return "", err
 	}
 
 	claims := &jwt.StandardClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %s", token.Header["alg"])
+			return nil, errors.New(fmt.Sprintf("unexpected signing method: %v", token.Header["alg"]))
 		}
 		return jwtkey, nil
 	})

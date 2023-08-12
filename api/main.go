@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
-	csrf "github.com/utrack/gin-csrf"
 	"gorm.io/gorm"
 
 	"github.com/nakamurus/go-user-management/handlers"
@@ -26,25 +27,40 @@ func main() {
 	app.JWTKey = []byte(os.Getenv("JWT_KEY"))
 
 	app.DB = util.DBConnect()
+	sqlDB, err := app.DB.DB()
+	if err != nil {
+		panic("Failed to retrieve the database connection")
+	}
+	defer sqlDB.Close()
+
 	app.RDB = util.RedisClient()
 
+	uh := handlers.UserHandler(app.DB, app.JWTKey)
+	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey, app.RDB)
+	m := middleware.NewMiddleware(app.JWTKey)
+
 	r := gin.Default()
-	r.Use(csrf.Middleware(csrf.Options{
-		Secret: os.Getenv("CSRF_SECRET"),
-		ErrorFunc: func(c *gin.Context) {
-			c.String(http.StatusBadRequest, "CSRF token mismatch")
-			c.Abort()
-		},
-	}))
+
+	store := cookie.NewStore([]byte("secret"))
+	r.Use(sessions.Sessions("mysession", store))
+
+	// csrfMiddleware := csrf.Middleware(csrf.Options{
+	// 	Secret: os.Getenv("CSRF_SECRET"),
+	// 	ErrorFunc: func(c *gin.Context) {
+	// 		c.String(http.StatusBadRequest, "CSRF token mismatch")
+	// 		c.Abort()
+	// 	},
+	// })
+
+	// そして、このミドルウェアをサイドエフェクトを伴うエンドポイントにのみ適用します。
+	// r.POST("/login", csrfMiddleware, ah.LoginHandler())
+
 	rl := util.NewRateLimiter(5)
 	r.Use(func(c *gin.Context) {
 		rl.MiddleWare()
 		c.Next()
 	})
 
-	uh := handlers.UserHandler(app.DB, app.JWTKey)
-	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey, app.RDB)
-	m := middleware.NewMiddleware(app.JWTKey)
 	authorized := r.Group("/me")
 	authorized.Use(m.AuthenticateMiddleware())
 	{
@@ -53,15 +69,16 @@ func main() {
 		authorized.DELETE("/:id", uh.DeleteUserHandler())
 		authorized.POST("/refresh-token", ah.RefreshTokenHandler())
 		authorized.GET("/:id", uh.GetUserHandler())
+		authorized.POST("/logout", ah.LogOutHandler())
 	}
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World!")
 	})
-	r.POST("`/login", ah.LoginHandler())
 	r.GET("/users", uh.ListUsersHandler())
 	r.GET("/user/:id", m.AuthenticateMiddleware(), uh.GetUserHandler())
 	r.POST("/user", uh.CreateUserHandler())
+	r.POST("/login", ah.LoginHandler())
 
 	r.Run(":8080")
 }

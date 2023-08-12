@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/nakamurus/go-user-management/util"
 	"gorm.io/gorm"
@@ -23,20 +21,13 @@ type DBConfig struct {
 	PASSWORD string
 }
 
-func (u *User) BeforeSave(tx *gorm.DB) (err error) {
-	if u.Password != "" {
-		hashedPassword, err := util.HashPassword(u.Password)
-		if err != nil {
-			return err
-		}
-		u.Password = hashedPassword
-	}
-	return nil
-}
-
 func CreateUser(db *gorm.DB, user User) (*User, error) {
-	fmt.Println("Start Create User")
-	fmt.Println(user)
+	hashedPassword, err := util.HashPassword(user.Password)
+	if err != nil {
+		return nil, err
+	}
+	user.Password = hashedPassword
+
 	result := db.Create(&user)
 	if result.Error != nil {
 		return nil, result.Error
@@ -56,6 +47,15 @@ func GetAllUsers(db *gorm.DB) ([]User, error) {
 func GetUserById(db *gorm.DB, id uuid.UUID) (*User, error) {
 	var user User
 	result := db.Where("id = ?", id).Find(&user)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &user, nil
+}
+
+func GetUserByEmail(db *gorm.DB, email string) (*User, error) {
+	var user User
+	result := db.Where("email = ?", email).First(&user)
 	if result.Error != nil {
 		return nil, result.Error
 	}
