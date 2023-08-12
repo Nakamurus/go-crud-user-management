@@ -8,7 +8,18 @@ require (
 	gorm.io/gorm v1.25.3
 )
 
-require github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+require (
+	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/didip/tollbooth v4.0.2+incompatible // indirect
+	github.com/gin-contrib/sessions v0.0.0-20190101140330-dc5246754963 // indirect
+	github.com/gorilla/context v1.1.1 // indirect
+	github.com/gorilla/securecookie v1.1.1 // indirect
+	github.com/gorilla/sessions v1.1.3 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/utrack/gin-csrf v0.0.0-20190424104817-40fb8d2c8fca // indirect
+	golang.org/x/time v0.3.0 // indirect
+)
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect

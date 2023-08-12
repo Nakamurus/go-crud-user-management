@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	csrf "github.com/utrack/gin-csrf"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -58,22 +59,34 @@ func main() {
 	app.DB = db
 
 	r := gin.Default()
+	r.Use(csrf.Middleware(csrf.Options{
+		Secret: os.Getenv("CSRF_SECRET"),
+		ErrorFunc: func(c *gin.Context) {
+			c.String(http.StatusBadRequest, "CSRF token mismatch")
+			c.Abort()
+		},
+	}))
+
 	uh := handlers.UserHandler(app.DB, app.JWTKey)
 	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey)
 	m := middleware.NewMiddleware(app.JWTKey)
+	authorized := r.Group("/me")
+	authorized.Use(m.AuthenticateMiddleware())
+	{
+		authorized.PUT("/:id", uh.UpdateUserHandler())
+		authorized.PUT("/:id/password", ah.ChangePasswordHandler())
+		authorized.DELETE("/:id", uh.DeleteUserHandler())
+		authorized.POST("/refresh-token", ah.RefreshTokenHandler())
+		authorized.GET("/:id", uh.GetUserHandler())
+	}
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World!")
 	})
 	r.POST("`/login", ah.LoginHandler())
-	r.GET("/protected", m.AuthenticateMiddleware(), uh.GetUserHandler())
 	r.GET("/users", uh.ListUsersHandler())
-	r.GET("/user/:id", uh.GetUserHandler())
+	r.GET("/user/:id", m.AuthenticateMiddleware(), uh.GetUserHandler())
 	r.POST("/user", uh.CreateUserHandler())
-	r.POST("/refresh-token", ah.RefreshTokenHandler())
-	r.PUT("/user/:id", uh.UpdateUserHandler())
-	r.PUT("/user/:id/password", ah.ChangePasswordHandler())
-	r.DELETE("/user/:id", uh.DeleteUserHandler())
 
 	r.Run(":8080")
 }
