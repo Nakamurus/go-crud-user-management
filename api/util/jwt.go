@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 )
 
 func GenerateToken(jwtkey []byte, email string) (string, error) {
@@ -85,4 +86,20 @@ func GetUserIDFromJWT(c *gin.Context, jwtkey []byte) (string, error) {
 	}
 
 	return "", errors.New("Invalid token")
+}
+
+func AddTokenToBlacklist(token string, rdb *redis.Client, expiration time.Duration) error {
+	err := rdb.Set(ctx, token, true, expiration).Err()
+	return err
+}
+
+func IsTokenBlocklisted(token string, rdb *redis.Client) (bool, error) {
+	val, err := rdb.Get(ctx, token).Result()
+	if err == redis.Nil {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return val == "true", nil
+
 }

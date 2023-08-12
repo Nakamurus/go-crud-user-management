@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/nakamurus/go-user-management/models"
 	"github.com/nakamurus/go-user-management/util"
@@ -13,12 +16,14 @@ import (
 type AuthHandler struct {
 	db     *gorm.DB
 	JWTKey []byte
+	rdb    *redis.Client
 }
 
-func AuthHandlerInit(db *gorm.DB, jwtkey []byte) AuthHandler {
+func AuthHandlerInit(db *gorm.DB, jwtkey []byte, rdb *redis.Client) AuthHandler {
 	return AuthHandler{
 		db:     db,
 		JWTKey: jwtkey,
+		rdb:    rdb,
 	}
 }
 
@@ -53,6 +58,11 @@ func (h *AuthHandler) LoginHandler() gin.HandlerFunc {
 
 func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		err := h.processAndBlacklistToken(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		var changePasswordRequest struct {
 			OldPassword string `json:"old_password"`
 			NewPassword string `json:"new_password"`
@@ -95,6 +105,12 @@ func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 
 func (h *AuthHandler) RefreshTokenHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		err := h.processAndBlacklistToken(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
 		oldToken := c.Request.Header.Get("Authorization")
 		if oldToken == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "No token found in request headers"})
@@ -108,4 +124,41 @@ func (h *AuthHandler) RefreshTokenHandler() gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"token": newToken})
 	}
+}
+
+func (h *AuthHandler) LogOutHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := h.processAndBlacklistToken(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
+	}
+}
+
+func (h *AuthHandler) processAndBlacklistToken(c *gin.Context) error {
+	token := c.Request.Header.Get("Authorization")
+	if token == "" {
+		return errors.New("No token found in request headers")
+	}
+
+	isBlacklisted, err := util.IsTokenBlocklisted(token, h.rdb)
+	if err != nil {
+		return err
+	}
+
+	if isBlacklisted {
+		return errors.New("Token is blacklisted")
+	}
+
+	claims, err := util.ParseToken(h.JWTKey, token)
+	if err != nil {
+		return err
+	}
+
+	expireTime := time.Unix(claims.ExpiresAt, 0)
+	expiration := expireTime.Sub(time.Now())
+
+	return util.AddTokenToBlacklist(token, h.rdb, expiration)
 }

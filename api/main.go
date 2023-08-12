@@ -5,20 +5,19 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	csrf "github.com/utrack/gin-csrf"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/nakamurus/go-user-management/handlers"
 	"github.com/nakamurus/go-user-management/middleware"
-	"github.com/nakamurus/go-user-management/models"
 	"github.com/nakamurus/go-user-management/util"
 )
 
 type App struct {
 	DB     *gorm.DB
 	JWTKey []byte
+	RDB    *redis.Client
 }
 
 func main() {
@@ -26,38 +25,8 @@ func main() {
 
 	app.JWTKey = []byte(os.Getenv("JWT_KEY"))
 
-	connStr := "postgres://" + os.Getenv("DB_USER") + ":" + os.Getenv("DB_PASSWORD") + "@" +
-		os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT") + "/" + os.Getenv("DB_NAME") + "?sslmode=disable"
-	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-
-	if err != nil {
-		panic("Failed to connect to database")
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		panic("Failed to retrieve the database connection")
-	}
-	defer sqlDB.Close()
-
-	db.AutoMigrate(&models.User{})
-	// create user table if not exists
-	db.Exec(`
-	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-	DROP TABLE IF EXISTS users;
-
-	CREATE TABLE IF NOT EXISTS users (
-		id uuid DEFAULT uuid_generate_v4() NOT NULL,
-		name varchar(255) NOT NULL,
-		email varchar(255) NOT NULL,
-		password varchar(255) NOT NULL,
-		PRIMARY KEY (id)
-	);
-	`)
-
-	app.DB = db
+	app.DB = util.DBConnect()
+	app.RDB = util.RedisClient()
 
 	r := gin.Default()
 	r.Use(csrf.Middleware(csrf.Options{
@@ -74,7 +43,7 @@ func main() {
 	})
 
 	uh := handlers.UserHandler(app.DB, app.JWTKey)
-	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey)
+	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey, app.RDB)
 	m := middleware.NewMiddleware(app.JWTKey)
 	authorized := r.Group("/me")
 	authorized.Use(m.AuthenticateMiddleware())
