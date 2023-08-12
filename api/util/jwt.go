@@ -24,7 +24,40 @@ func GenerateToken(jwtkey []byte, email string) (string, error) {
 	return tokenString, nil
 }
 
-func refreshJWTToken(c *gin.Context) {
+func ParseToken(jwtKey []byte, tokenString string) (*jwt.StandardClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok || !token.Valid {
+		return nil, errors.New("Invalid token")
+	}
+	return claims, nil
+}
+
+func RefreshJWTToken(jwtKey []byte, oldTokenString string) (string, error) {
+	oldClaims, err := ParseToken(jwtKey, oldTokenString)
+	if err != nil {
+		return "", err
+	}
+
+	expirationTime := time.Now().Add(24 * time.Hour)
+	newClaims := &jwt.StandardClaims{
+		Subject:   oldClaims.Subject,
+		ExpiresAt: expirationTime.Unix(),
+	}
+
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+	newTokenString, err := newToken.SignedString(jwtKey)
+	if err != nil {
+		return "", err
+	}
+	return newTokenString, nil
 }
 
 func GetUserIDFromJWT(c *gin.Context, jwtkey []byte) (string, error) {

@@ -70,7 +70,9 @@ func main() {
 	r.GET("/users", uh.ListUsersHandler())
 	r.GET("/user/:id", uh.GetUserHandler())
 	r.POST("/user", uh.CreateUserHandler())
+	r.POST("/refresh-token", ah.RefreshTokenHandler())
 	r.PUT("/user/:id", uh.UpdateUserHandler())
+	r.PUT("/user/:id/password", ah.ChangePasswordHandler())
 	r.DELETE("/user/:id", uh.DeleteUserHandler())
 
 	r.Run(":8080")

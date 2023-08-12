@@ -92,3 +92,20 @@ func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 	}
 }
+
+func (h *AuthHandler) RefreshTokenHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		oldToken := c.Request.Header.Get("Authorization")
+		if oldToken == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No token found in request headers"})
+			return
+		}
+
+		newToken, err := util.RefreshJWTToken(h.JWTKey, oldToken)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error refreshing token"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"token": newToken})
+	}
+}
