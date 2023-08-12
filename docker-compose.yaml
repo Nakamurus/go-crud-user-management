@@ -17,6 +17,17 @@ services:
       - "-c"
       - "shared_preload_libraries=pg_stat_statements"
 
+  redis:
+    image: redis:6.2-alpine
+    env_file: .env
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    restart: always
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+
   api:
     env_file: .env
     build:
