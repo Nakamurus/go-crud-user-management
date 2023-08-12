@@ -13,6 +13,7 @@ import (
 	"github.com/nakamurus/go-user-management/handlers"
 	"github.com/nakamurus/go-user-management/middleware"
 	"github.com/nakamurus/go-user-management/models"
+	"github.com/nakamurus/go-user-management/util"
 )
 
 type App struct {
@@ -66,6 +67,11 @@ func main() {
 			c.Abort()
 		},
 	}))
+	rl := util.NewRateLimiter(5)
+	r.Use(func(c *gin.Context) {
+		rl.MiddleWare()
+		c.Next()
+	})
 
 	uh := handlers.UserHandler(app.DB, app.JWTKey)
 	ah := handlers.AuthHandlerInit(app.DB, app.JWTKey)
