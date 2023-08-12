@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/go-redis/redis/v8"
@@ -17,7 +18,7 @@ func RedisClient() *redis.Client {
 	})
 	_, err := rdb.Ping(rdb.Context()).Result()
 	if err != nil {
-		panic("Failed to connect to redis")
+		panic(fmt.Sprintf("Failed to connect to redis: %v", err))
 	}
 	return rdb
 }

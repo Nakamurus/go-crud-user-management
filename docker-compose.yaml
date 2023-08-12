@@ -27,6 +27,9 @@ services:
     restart: always
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
 
   api:
     env_file: .env
@@ -40,6 +43,7 @@ services:
       - 8080:8080
     depends_on:
       - db
+      - redis
     environment:
       DB_HOST: ${DB_HOST}
       DB_USER: ${DB_USER}
