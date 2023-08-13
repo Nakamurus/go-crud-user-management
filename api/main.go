@@ -44,16 +44,6 @@ func main() {
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("mysession", store))
 
-	// csrfMiddleware := csrf.Middleware(csrf.Options{
-	// 	Secret: os.Getenv("CSRF_SECRET"),
-	// 	ErrorFunc: func(c *gin.Context) {
-	// 		c.String(http.StatusBadRequest, "CSRF token mismatch")
-	// 		c.Abort()
-	// 	},
-	// })
-
-	// r.POST("/login", csrfMiddleware, ah.LoginHandler())
-
 	rl := util.NewRateLimiter(5)
 	r.Use(func(c *gin.Context) {
 		rl.MiddleWare()
