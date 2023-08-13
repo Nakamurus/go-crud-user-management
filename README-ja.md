@@ -1,35 +1,34 @@
-# Go CRUD User Management: Simple and Modern
+# Go CRUD User Management with Gin and Docker
 
-Welcome to the `go-crud-user-management` project. Built with **Golang**, **Gin**, and containerized with **Docker**, this is a toy application designed to demonstrate a basic user management system.
-[For Japanese, click here 日本語はこちら](./README_ja.md)
+Go言語、Ginを使ったユーザー管理CRUDアプリケーションです。Dockerでコンテナ化して、PostgreSQLとRedisを使ったシンプルなシステムです。
+[For English, click here 英語はこちら](./README_ja.md)
 
-## Features
+## 特徴
 
-- **Golang**: Using Go provides simplicity and clarity, making the codebase easy to understand.
-- **Web Framework**: We're utilizing Gin, a framework that offers a lean, efficient web server with easy JSON rendering.
-- **Containerization**: Thanks to Docker, you can ensure that the app runs the same regardless of where it's deployed.
-- **Security**: Simple JWT-based authentication complemented with a Redis-backed blacklisting system.
-- **Structured Code**: The code is modular, making it easier for newcomers to follow and learn from.
-- **CI/CD Test**: CI/CD Test ensures stability and reliability.
+- **Golang**
+- **Gin**
+- **Docker**
+- **Security**: JWTベースの認証システムで、ブラックリストシステムのためRedisを使っています。
+- **CI/CD Test**: Github ActionsのCI/CDテストでプッシュのたびにテストを走らせています。
 
-## API Endpoints & Sample Requests
+## API エンドポイントとサンプルリクエスト
 
-> Note: For these sample requests, replace `uuid` with your actual UUID.
+> `uuid` は実際のUUIDで置き換えてください。
 
 ## Hello World
 
-- **Route:** GET /
-- **Responses:**
+- **ルート:** GET /
+- **レスポンス:**
 
   - **200 OK:**
   - **Hello World**
 
-## Authentication Routes
+## Authentication ルートs
 
 ### 1. Login
 
-- **Route:** POST /login
-- **Request Body:**
+- **ルート:** POST /login
+- **リクエストボディ:**
 
 ```json
 {
@@ -38,7 +37,7 @@ Welcome to the `go-crud-user-management` project. Built with **Golang**, **Gin**
 }
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - **200 OK:**
 
@@ -54,8 +53,8 @@ Welcome to the `go-crud-user-management` project. Built with **Golang**, **Gin**
 
 ### 2. Change Password
 
-- **Route:** POST /me/uuid/password
-- **Request Body:**
+- **ルート:** POST /me/uuid/password
+- **リクエストボディ:**
 
 ```json
 {
@@ -64,13 +63,13 @@ Welcome to the `go-crud-user-management` project. Built with **Golang**, **Gin**
 }
 ```
 
-- **Request Header**
+- **リクエストヘッダ**
 
 ```bash
 Authorization: Bearer your_jwt_token_here
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - **200 OK:**
 
@@ -84,14 +83,14 @@ Authorization: Bearer your_jwt_token_here
 
 ### 3. Refresh Token
 
-- **Route:** GET /me/refresh-token
-- **Request Header**
+- **ルート:** GET /me/refresh-token
+- **リクエストヘッダ**
 
 ```bash
 Authorization: Bearer your_jwt_token_here
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - **200 OK:**
 
@@ -105,32 +104,32 @@ Authorization: Bearer your_jwt_token_here
 
 ### 4. Logout
 
-- **Route:** GET /me/logout
-- **Request Header**
+- **ルート:** GET /me/logout
+- **リクエストヘッダ**
 
 ```bash
 Authorization: Bearer your_jwt_token_here
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - 200 OK: { "message": "Successfully logged out" }
   - Other Status Codes: { "error": "error_message_here" }
 
-## User Routes
+## User ルートs
 
 ### 1. List Users
 
-- **Route:** GET /users
-- **Responses:**
+- **ルート:** GET /users
+- **レスポンス:**
 
   - 200 OK: Array of user objects.
   - 500 Internal Server Error: { "error": "error_message_here" }
 
 ### 2. Get a User
 
-- **Route:** GET /user/:uuid
-- **Responses:**
+- **ルート:** GET /user/:uuid
+- **レスポンス:**
 
   - 200 OK: User object.
   - 404 Not Found: { "error": "User not found" }
@@ -138,8 +137,8 @@ Authorization: Bearer your_jwt_token_here
 
 ### 3. Create a User
 
-- **Route:** POST /user
-- **Request Body:**
+- **ルート:** POST /user
+- **リクエストボディ:**
 
 ```json
 {
@@ -149,7 +148,7 @@ Authorization: Bearer your_jwt_token_here
 }
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - 200 OK: { "message": "user created John Doe" }
   - 400 Bad Request: { "error": "Missing required fields" }
@@ -157,8 +156,8 @@ Authorization: Bearer your_jwt_token_here
 
 ### 4. Update a User
 
-- **Route:** PUT /me/:uuid
-- **Request Body (Partial updates allowed):**
+- **ルート:** PUT /me/:uuid
+- **リクエストボディ (Partial updates allowed):**
 
 ```json
 {
@@ -167,13 +166,13 @@ Authorization: Bearer your_jwt_token_here
 }
 ```
 
-- **Request Header**
+- **リクエストヘッダ**
 
 ```bash
 Authorization: Bearer your_jwt_token_here
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - **200 OK:**
 
@@ -189,14 +188,14 @@ Authorization: Bearer your_jwt_token_here
 
 ### 5. Delete a User
 
-- **Route:** DELETE /me/:uuid
-- **Request Header**
+- **ルート:** DELETE /me/:uuid
+- **リクエストヘッダ**
 
 ```bash
 Authorization: Bearer your_jwt_token_here
 ```
 
-- **Responses:**
+- **レスポンス:**
 
   - 200 OK: { "message": "user deleted" }
   - 500 Internal Server Error: { "error": "error_message_here" }
