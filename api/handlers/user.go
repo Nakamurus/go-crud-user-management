@@ -149,26 +149,3 @@ func (h *Handler) DeleteUserHandler() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
 	}
 }
-
-func (h *Handler) GetApiKeyHandler() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := getUUIDFromRequest(c)
-		user, err := models.GetUserById(h.db, id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		if user == nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-			return
-		}
-
-		apiKey, err := util.SaveAPIKey(id, h.db)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"apiKey": apiKey})
-	}
-}
