@@ -26,10 +26,13 @@ jobs:
             - 6379:6379
 
     steps:
-        - name: Check current directory
+        - name: List directory contents
           run: |
                 pwd
-                tree -a
+                ls -a
+                ls -a ./api/
+        - name: Check Go Environment
+          run: go env
         - name: Checkout code
           uses: actions/checkout@v3
 
