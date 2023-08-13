@@ -30,7 +30,8 @@ jobs:
           run: |
                 pwd
                 ls -a
-                ls -a ./api/
+                ls ../
+                ls -a ../api/
         - name: Check Go Environment
           run: go env
         - name: Checkout code
