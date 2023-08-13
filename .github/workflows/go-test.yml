@@ -31,12 +31,17 @@ jobs:
 
         - name: Set up Go
           uses: actions/setup-go@v3
+          with:
+            go-version: '>=1.19.0'
+            cache: true
+            cache-dependency-path: go.sum
+        - name: golangci-lint
+          uses: golangci/golangci-lint-action@v3
 
-        - name: Wait for services
-          run: |
-            chmod +x ./wait-for-it.sh
-            ./wait-for-it.sh localhost:5432 --timeout=15
-            ./wait-for-it.sh localhost:6379 --timeout=15
-
-        - name: Test
-          run: go test -v ./api/...
+        - name: Install dependencies
+          run: go get .
+        - name: Build
+          run: go build -v ./...
+        - name: Test with the Go CLI
+          run: go test -v ./...
+    
