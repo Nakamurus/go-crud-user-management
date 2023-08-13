@@ -52,6 +52,10 @@ func (h *Handler) GetUserHandler() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		if user == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
 		c.JSON(http.StatusOK, user)
 	}
 }
@@ -63,6 +67,11 @@ func (h *Handler) CreateUserHandler() gin.HandlerFunc {
 
 		if err := c.ShouldBind(&user); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if user.Name == "" || user.Email == "" || user.Password == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields"})
 			return
 		}
 
@@ -98,7 +107,7 @@ func (h *Handler) UpdateUserHandler() gin.HandlerFunc {
 			currentUser.Email = updatedInfo.Email
 		}
 
-		updatedUser, err := models.UpdateUser(h.db, currentUser)
+		updatedUser, err := models.UpdateUser(h.db, *currentUser)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -126,10 +135,17 @@ func (h *Handler) DeleteUserHandler() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		if err := models.DeleteUser(h.db, user); err != nil {
+
+		isDeleted, err := models.DeleteUser(h.db, user)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		if !isDeleted {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
 	}
 }

@@ -18,7 +18,13 @@ func NewMiddleware(jwtkey []byte) *MiddleWare {
 
 func (m *MiddleWare) AuthenticateMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, err := util.ExtractBearerToken(c)
+		authHader := c.Request.Header.Get("Authorization")
+		if authHader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			c.Abort()
+			return
+		}
+		tokenString, err := util.ExtractBearerToken(authHader)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()

@@ -35,7 +35,10 @@ func (h *AuthHandler) LoginHandler() gin.HandlerFunc {
 		}
 		var foundUser models.User
 
-		if err := h.db.Where("email = ?", user.Email).First(&foundUser).Error; err != nil {
+		if found, err := models.GetUserByEmail(h.db, user.Email); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user"})
+			return
+		} else if found == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 			return
 		}
@@ -83,6 +86,10 @@ func (h *AuthHandler) ChangePasswordHandler() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user"})
 			return
 		}
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "No user found with this email"})
+			return
+		}
 
 		if !util.CheckPasswordHash(changePasswordRequest.OldPassword, user.Password) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
@@ -111,7 +118,12 @@ func (h *AuthHandler) RefreshTokenHandler() gin.HandlerFunc {
 			return
 		}
 
-		oldToken, err := util.ExtractBearerToken(c)
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			return
+		}
+		oldToken, err := util.ExtractBearerToken(authHeader)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
@@ -138,7 +150,13 @@ func (h *AuthHandler) LogOutHandler() gin.HandlerFunc {
 }
 
 func (h *AuthHandler) processAndBlacklistToken(c *gin.Context) error {
-	tokenString, err := util.ExtractBearerToken(c)
+	authHeader := c.Request.Header.Get("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+		c.Abort()
+		return errors.New("Authorization header required")
+	}
+	tokenString, err := util.ExtractBearerToken(authHeader)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		c.Abort()

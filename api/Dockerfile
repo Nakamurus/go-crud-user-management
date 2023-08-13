@@ -2,6 +2,7 @@
 FROM golang:1.19.2-alpine3.16 AS builder
 
 RUN apk update && apk add --no-cache git
+RUN apk add --no-cache alpine-sdk build-base
 
 WORKDIR /api
 
@@ -12,4 +13,4 @@ RUN go install github.com/cosmtrek/air@latest
 
 COPY . .
 
-CMD ["air", "-c", ".air.toml"]
+# CMD ["air", "-c", ".air.toml"]

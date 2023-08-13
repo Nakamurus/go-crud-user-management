@@ -1,6 +1,8 @@
 package models
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"github.com/nakamurus/go-user-management/util"
 	"gorm.io/gorm"
@@ -21,7 +23,40 @@ type DBConfig struct {
 	PASSWORD string
 }
 
+func (u *User) IsEqual(user *User) bool {
+	if u.ID != user.ID {
+		return false
+	}
+	if u.Name != user.Name {
+		return false
+	}
+	if u.Email != user.Email {
+		return false
+	}
+	if u.Password != user.Password {
+		return false
+	}
+	return true
+}
+
+func isEmailUnique(db *gorm.DB, email string) bool {
+	isUserUnique, err := GetUserByEmail(db, email)
+	if err != nil || isUserUnique == nil {
+		return false
+	}
+	return true
+}
+
 func CreateUser(db *gorm.DB, user User) (*User, error) {
+
+	if user.Name == "" || user.Email == "" || user.Password == "" {
+		return nil, errors.New("name, email and password are required")
+	}
+
+	if isEmailUnique(db, user.Email) {
+		return nil, errors.New("email is already used")
+	}
+
 	hashedPassword, err := util.HashPassword(user.Password)
 	if err != nil {
 		return nil, err
@@ -46,8 +81,11 @@ func GetAllUsers(db *gorm.DB) ([]User, error) {
 
 func GetUserById(db *gorm.DB, id uuid.UUID) (*User, error) {
 	var user User
-	result := db.Where("id = ?", id).Find(&user)
+	result := db.Where("id = ?", id).First(&user)
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, result.Error
 	}
 	return &user, nil
@@ -57,23 +95,29 @@ func GetUserByEmail(db *gorm.DB, email string) (*User, error) {
 	var user User
 	result := db.Where("email = ?", email).First(&user)
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, result.Error
 	}
 	return &user, nil
 }
 
-func UpdateUser(db *gorm.DB, user *User) (*User, error) {
+func UpdateUser(db *gorm.DB, user User) (*User, error) {
 	result := db.Save(user)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return user, nil
+	return &user, nil
 }
 
-func DeleteUser(db *gorm.DB, user *User) error {
+func DeleteUser(db *gorm.DB, user *User) (bool, error) {
 	result := db.Delete(&user)
 	if result.Error != nil {
-		return result.Error
+		return false, result.Error
 	}
-	return nil
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+	return true, nil
 }

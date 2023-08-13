@@ -39,6 +39,8 @@ services:
     tty: true
     volumes:
       - ./api:/app
+      - ./wait-for-it.sh:/app/wait-for-it.sh
+      - ./api-test.sh:/app/api-test.sh
     ports:
       - 8080:8080
     depends_on:
@@ -50,3 +52,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       DB_PORT: ${DB_PORT}
+    command: /bin/sh -c " echo 'Waiting for db and redis...' &&
+                chmod +x ./wait-for-it.sh &&
+                echo 'Waiting for db...' &&
+                ./wait-for-it.sh ${DB_HOST}:${DB_PORT} --timeout=15 &&
+                echo 'Waiting for redis...' &&
+                ./wait-for-it.sh ${REDIS_HOST}:${REDIS_PORT} --timeout=15 &&
+                echo 'Finished waiting for db and redis' &&
+                go test -v ./..."
+

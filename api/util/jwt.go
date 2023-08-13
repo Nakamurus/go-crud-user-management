@@ -63,7 +63,13 @@ func RefreshJWTToken(jwtKey []byte, oldTokenString string) (string, error) {
 }
 
 func GetSubjectFromJWT(c *gin.Context, jwtkey []byte) (string, error) {
-	tokenString, err := ExtractBearerToken(c)
+	authHader := c.Request.Header.Get("Authorization")
+	if authHader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+		c.Abort()
+		return "", errors.New("Authorization header required")
+	}
+	tokenString, err := ExtractBearerToken(authHader)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		c.Abort()
