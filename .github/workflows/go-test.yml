@@ -29,9 +29,8 @@ jobs:
         - name: List directory contents
           run: |
                 pwd
-                ls -a
-                ls ../
-                ls -a ../api/
+                ls -a ./
+                ls -a ../
         - name: Check Go Environment
           run: go env
         - name: Checkout code
