@@ -1,7 +1,8 @@
 # Go CRUD User Management: Simple and Modern
 
 Welcome to the `go-crud-user-management` project. Built with **Golang**, **Gin**, and containerized with **Docker**, this is a toy application designed to demonstrate a basic user management system.
-[For Japanese, click here 日本語はこちら](./README_ja.md)
+
+> Note: [For Japanese, click here 日本語はこちら](./README-ja.md)
 
 ## Features
 

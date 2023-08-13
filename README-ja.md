@@ -1,7 +1,8 @@
 # Go CRUD User Management with Gin and Docker
 
 Go言語、Ginを使ったユーザー管理CRUDアプリケーションです。Dockerでコンテナ化して、PostgreSQLとRedisを使ったシンプルなシステムです。
-[For English, click here 英語はこちら](./README_ja.md)
+
+> Note: [For English, click here 英語はこちら](./README.md)
 
 ## 特徴
 
