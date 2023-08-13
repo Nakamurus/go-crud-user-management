@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,7 +11,12 @@ import (
 )
 
 func setupTestDB() *gorm.DB {
-	connStr := "postgres://postgres:password@db:5432/postgres?sslmode=disable"
+	host := "localhost"
+	port := 5432
+	user := "postgres"
+	password := "password"
+	dbname := "postgres"
+	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
