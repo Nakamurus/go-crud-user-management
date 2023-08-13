@@ -52,7 +52,6 @@ func main() {
 	// 	},
 	// })
 
-	// そして、このミドルウェアをサイドエフェクトを伴うエンドポイントにのみ適用します。
 	// r.POST("/login", csrfMiddleware, ah.LoginHandler())
 
 	rl := util.NewRateLimiter(5)
@@ -76,7 +75,7 @@ func main() {
 		c.String(http.StatusOK, "Hello World!")
 	})
 	r.GET("/users", uh.ListUsersHandler())
-	r.GET("/user/:id", m.AuthenticateMiddleware(), uh.GetUserHandler())
+	r.GET("/user/:id", uh.GetUserHandler())
 	r.POST("/user", uh.CreateUserHandler())
 	r.POST("/login", ah.LoginHandler())
 

@@ -33,12 +33,13 @@ func (h *AuthHandler) LoginHandler() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		var foundUser models.User
 
-		if found, err := models.GetUserByEmail(h.db, user.Email); err != nil {
+		foundUser, err := models.GetUserByEmail(h.db, user.Email)
+
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user"})
 			return
-		} else if found == nil {
+		} else if foundUser == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 			return
 		}

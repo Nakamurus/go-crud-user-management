@@ -59,5 +59,6 @@ services:
                 echo 'Waiting for redis...' &&
                 ./wait-for-it.sh ${REDIS_HOST}:${REDIS_PORT} --timeout=15 &&
                 echo 'Finished waiting for db and redis' &&
-                go test -v ./..."
+                go test -v ./... &&
+                go run main.go"
 
